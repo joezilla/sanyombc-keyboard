@@ -116,6 +116,21 @@ void loop() {
     code = keyboard.read();
 
     if (code > 0) {
+      translate(code);
+    }
+  }
+}
+
+
+void translate(uint16_t scanCode) {
+
+  controlOn = CHECK_BIT(code, 13);  
+  altGrKey = CHECK_BIT(code, 10);   
+  altKey = CHECK_BIT(code, 11);    
+  altOn = (altGrKey || altKey) > 0;
+  capsOn = CHECK_BIT(code, 12);   
+  shiftOn = CHECK_BIT(code, 14); 
+  isUpper = (capsOn || shiftOn) > 0;
 
 #ifdef DEBUG
       Serial.print(" mapped ");
@@ -125,44 +140,17 @@ void loop() {
       Serial.print("  Code (");
       Serial.print(code & 0xFF, HEX);
       Serial.print(")");
-
-      controlOn = CHECK_BIT(code, 13);  // (code & 0x1 << 13) > 0;
-      altGrKey = CHECK_BIT(code, 10);   //(code & 0x1 << 10) > 0;
-      altKey = CHECK_BIT(code, 11);     //(code & 0x1 << 11) > 0;
-      altOn = (altGrKey || altKey) > 0;
-      capsOn = CHECK_BIT(code, 12);   // (code & 0x1 << 12) > 0;
-      shiftOn = CHECK_BIT(code, 14);  //(code & 0x1 << 14) > 0;
-      isUpper = (capsOn || shiftOn) > 0;
-
       Serial.print("  Shift (");
       Serial.print(isUpper, HEX);
       Serial.print(")");
-
       Serial.print("  Crtl (");
       Serial.print(controlOn, HEX);
       Serial.print(")");
-
       Serial.print("  Alt (");
       Serial.print(altOn, HEX);
       Serial.print(")");
       Serial.print("\n");
 #endif
-
-      translate(code);
-    }
-  }
-}
-
-
-void translate(int scanCode) {
-
-  controlOn = CHECK_BIT(code, 13);  // (code & 0x1 << 13) > 0;
-  altGrKey = CHECK_BIT(code, 10);   //(code & 0x1 << 10) > 0;
-  altKey = CHECK_BIT(code, 11);     //(code & 0x1 << 11) > 0;
-  altOn = (altGrKey || altKey) > 0;
-  capsOn = CHECK_BIT(code, 12);   // (code & 0x1 << 12) > 0;
-  shiftOn = CHECK_BIT(code, 14);  //(code & 0x1 << 14) > 0;
-  isUpper = (capsOn || shiftOn) > 0;
 
   // the character
   int character = code & 0xFF;
