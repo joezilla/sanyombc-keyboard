@@ -58,4 +58,4 @@ The scancodes received appear to correspond to ASCII, with keys producing differ
 shift states. For example, key 1 produces 31h ('1') unshifted, but 21h ('!') shifted. 
 
 ## Limitations
-Control key behavior not yet working.
+Sanyo graphics characters not yet implemented (including graph-keymode)

@@ -20,73 +20,56 @@
 
 /**
  * Built for US-American keyboard layout only at the moment.
- * CTL-ALT-DEL will send the reset signal to the MBC
+ * CTL-ALT-DEL will send the reset signal to the MBC.
  */
 
 // You can activate debug mode that outputs to the serial console
 // For debugging and plugging the arduino directly into a
 // computer's usb/serial. Don't enable in final firmare.
- // #define DEBUG
+// #define DEBUG 1
 
 #include <PS2KeyAdvanced.h>
 #include <PS2KeyMap.h>
-#include <PS2KeyAdvanced.h>
+
+// sanyo scan codes
+#include "scancodes.h"
 
 // ps2 adapter pins
-const int kb_datapin = 8;  //  ps2 data pin
-const int kb_irqpin = 3;   //  ps2 clock pin. has to be on 2 or 3 (interrupt pin)
+const int KB_DATAPIN = 8;  // ps2 data pin
+const int KB_IRQPIN = 3;   // ps2 clock pin. has to be on 2 or 3 (interrupt pin)
 
 // serial configuration as per MBC-555 specifications
 const int MBC_BAUD = 1200;          // 1200 baud
 const int MBC_SR_CFG = SERIAL_8E2;  // 8 data, 2 stop bits
 
 // output pin for reset
-const int mbc_reset_pin = 6;  // reset pin to MBC; pulled to low for reset
+const int MBC_RESET_PIN = 6;  // reset pin to MBC; pulled to low for reset
 
-// key codes per MBC manu al
-const int MBC_END = 0x1;
-const int MBC_PG_DOWN = 0x2;    // num pad
-const int MBC_SCRL_LOCK = 0x3;  // LOCK key on bottom left
-const int MBC_PG_UP = 0x4;      // num pad
-const int MBC_BACKTAB = 0x5;    // reverse tab = shift-tab
-const int MBC_INSERT = 0x7;     // delete/insert
-const int MBC_PRN_SCRN = 0x7;
-const int MBC_BACKSPACE = 0x8;  // next to ins/del on mbc keyboard
-const int MBC_TAB = 0x9;        // regular tab
-const int MBC_ENTER = 0xa;      // numeric keypad enter
-const int MBC_HOME = 0xb;       // num pad
-const int MBC_RETURN = 0xd;     // main return key (line feed)
-const int MBC_F1 = 0x10;
-const int MBC_F2 = 0x11;
-const int MBC_F3 = 0x12;
-const int MBC_F4 = 0x13;
-const int MBC_F5 = 0x14;
-const int MBC_F6 = 0x15;
-const int MBC_F7 = 0x16;
-const int MBC_F8 = 0x17;
-const int MBC_F9 = 0x18;
-const int MBC_F10 = 0x19;
-const int MBC_ESC = 0x1b;
-const int MBC_CRS_LEFT = 0x1c;
-const int MBC_CRS_RIGHT = 0x1d;
-const int MBC_CRS_UP = 0x1e;
-const int MBC_CRS_DOWN = 0x1f;
-const int MBC_DEL = 0x7;
-
+// macro
 #define CHECK_BIT(var, pos) ((var) & (1 << (pos))) > 0
 
 PS2KeyAdvanced keyboard;
+// character from ps2
+uint16_t currentScanCode;
+// status codes for pressed keys
+bool isControlPressed;
+bool isAltGrPressed;
+bool isAltPressed;
+bool isAnyAltPressed;
+bool isCapsLockOn;
+bool isShiftPressed;
+bool upperCase;
 
 void setup() {
   // set reset pin to high
-  pinMode(mbc_reset_pin, OUTPUT);
-  digitalWrite(mbc_reset_pin, HIGH);
+  pinMode(MBC_RESET_PIN, OUTPUT);
+  digitalWrite(MBC_RESET_PIN, HIGH);
 
   // startup delay
   delay(500);
 
   // setup keyboard
-  keyboard.begin(kb_datapin, kb_irqpin);
+  keyboard.begin(KB_DATAPIN, KB_IRQPIN);
 
   // Disable Break codes (key release) from PS2KeyAdvanced
   keyboard.setNoBreak(1);
@@ -101,62 +84,51 @@ void setup() {
 #endif
 }
 
-uint16_t code;
-uint8_t controlOn;
-uint8_t altGrKey;
-uint8_t altKey;
-uint8_t altOn;
-uint8_t capsOn;
-uint8_t shiftOn;
-uint8_t isUpper;
-
 void loop() {
   if (keyboard.available()) {
     // read the next key
-    code = keyboard.read();
-
-    if (code > 0) {
-      translate(code);
+    currentScanCode = keyboard.read();
+    if (currentScanCode > 0) {
+      processScanCode();
     }
   }
 }
 
+void processScanCode() {
 
-void translate(uint16_t scanCode) {
-
-  controlOn = CHECK_BIT(code, 13);  
-  altGrKey = CHECK_BIT(code, 10);   
-  altKey = CHECK_BIT(code, 11);    
-  altOn = (altGrKey || altKey) > 0;
-  capsOn = CHECK_BIT(code, 12);   
-  shiftOn = CHECK_BIT(code, 14); 
-  isUpper = (capsOn || shiftOn) > 0;
+  isControlPressed = CHECK_BIT(currentScanCode, 13);
+  isAltGrPressed = CHECK_BIT(currentScanCode, 10);
+  isAltPressed = CHECK_BIT(currentScanCode, 11);
+  isAnyAltPressed = isAltGrPressed || isAltPressed;
+  isCapsLockOn = CHECK_BIT(currentScanCode, 12);
+  isShiftPressed = CHECK_BIT(currentScanCode, 14);
+  upperCase = isCapsLockOn || isShiftPressed;
 
 #ifdef DEBUG
-      Serial.print(" mapped ");
-      Serial.print(code, HEX);
-      Serial.print(" - Status Bits ");
-      Serial.print(code >> 8, HEX);
-      Serial.print("  Code (");
-      Serial.print(code & 0xFF, HEX);
-      Serial.print(")");
-      Serial.print("  Shift (");
-      Serial.print(isUpper, HEX);
-      Serial.print(")");
-      Serial.print("  Crtl (");
-      Serial.print(controlOn, HEX);
-      Serial.print(")");
-      Serial.print("  Alt (");
-      Serial.print(altOn, HEX);
-      Serial.print(")");
-      Serial.print("\n");
+  Serial.print(" mapped ");
+  Serial.print(currentScanCode, HEX);
+  Serial.print(" - Status Bits ");
+  Serial.print(currentScanCode >> 8, HEX);
+  Serial.print("  Code (");
+  Serial.print(currentScanCode & 0xFF, HEX);
+  Serial.print(")");
+  Serial.print("  Shift (");
+  Serial.print(upperCase, HEX);
+  Serial.print(")");
+  Serial.print("  Crtl (");
+  Serial.print(isControlPressed, HEX);
+  Serial.print(")");
+  Serial.print("  Alt (");
+  Serial.print(isAnyAltPressed, HEX);
+  Serial.print(")");
+  Serial.print("\n");
 #endif
 
   // the character
-  int character = code & 0xFF;
+  int character = currentScanCode & 0xFF;
 
   // control characters
-  if ((code & 0xFF)) {
+  if ((currentScanCode & 0xFF)) {
     //nop
   }
 
@@ -170,7 +142,7 @@ void translate(uint16_t scanCode) {
       w(MBC_ENTER);
       break;
     case PS2_KEY_DELETE:
-      if (controlOn && altKey)
+      if (isControlPressed && isAltPressed)
         reset();
       else
         w(MBC_BACKSPACE);  // backspace
@@ -182,7 +154,7 @@ void translate(uint16_t scanCode) {
       w(MBC_INSERT);
       break;
     case PS2_KEY_TAB:
-      w(isUpper ? MBC_BACKTAB : MBC_TAB);
+      w(upperCase ? MBC_BACKTAB : MBC_TAB);
       break;
     case PS2_KEY_BREAK:
       Serial.write("?");  // todo: not sure what break sends
@@ -230,6 +202,9 @@ void translate(uint16_t scanCode) {
     case PS2_KEY_KP_PLUS:
       w('+');
       break;
+    case PS2_KEY_KP_DIV:
+      w('/');
+      break;
     case PS2_KEY_KP_TIMES:
       w('*');
       break;
@@ -263,204 +238,204 @@ void translate(uint16_t scanCode) {
       break;
     // function keys
     case PS2_KEY_F1:
-      w(MBC_F1, controlOn);
+      w(isControlPressed ? CTRL_F1 : MBC_F1);
       break;
     case PS2_KEY_F2:
-      w(MBC_F2, controlOn);
+      w(isControlPressed ? CTRL_F2 : MBC_F2);
       break;
     case PS2_KEY_F3:
-      w(MBC_F3, controlOn);
+      w(isControlPressed ? CTRL_F3 : MBC_F3);
       break;
     case PS2_KEY_F4:
-      w(MBC_F4, controlOn);
+      w(isControlPressed ? CTRL_F4 : MBC_F4);
       break;
     case PS2_KEY_F5:
-      w(MBC_F5, controlOn);
+      w(isControlPressed ? CTRL_F5 : MBC_F5);
       break;
     case PS2_KEY_F6:
-      w(MBC_F6, controlOn);
+      w(isControlPressed ? CTRL_F6 : MBC_F6);
       break;
     case PS2_KEY_F7:
-      w(MBC_F7, controlOn);
+      w(isControlPressed ? CTRL_F7 : MBC_F7);
       break;
     case PS2_KEY_F8:
-      w(MBC_F8, controlOn);
+      w(isControlPressed ? CTRL_F8 : MBC_F8);
       break;
     case PS2_KEY_F9:
-      w(MBC_F9, controlOn);
+      w(isControlPressed ? CTRL_F9 : MBC_F9);
+      break;
+    case PS2_KEY_F10:
+      w(isControlPressed ? CTRL_F10 : MBC_F10);
       break;
       // ******* regular characters
     case PS2_KEY_A:
-      w(isUpper ? 'A' : 'a', controlOn);
+      w(isControlPressed ? CTRL_A : (upperCase ? 'A' : 'a'));
       break;
     case PS2_KEY_B:
-      w(isUpper ? 'B' : 'b', controlOn);
+      w(isControlPressed ? CTRL_B : (upperCase ? 'B' : 'b'));
       break;
     case PS2_KEY_C:
-      w(isUpper ? 'C' : 'c', controlOn);
+      w(isControlPressed ? CTRL_C : (upperCase ? 'C' : 'c'));
       break;
     case PS2_KEY_D:
-      w(isUpper ? 'D' : 'd', controlOn);
+      w(isControlPressed ? CTRL_D : (upperCase ? 'D' : 'd'));
       break;
     case PS2_KEY_E:
-      w(isUpper ? 'E' : 'e', controlOn);
+      w(isControlPressed ? CTRL_E : (upperCase ? 'E' : 'e'));
       break;
     case PS2_KEY_F:
-      w(isUpper ? 'F' : 'f', controlOn);
+      w(isControlPressed ? CTRL_F : (upperCase ? 'F' : 'f'));
       break;
     case PS2_KEY_G:
-      w(isUpper ? 'G' : 'g', controlOn);
+      w(isControlPressed ? CTRL_G : (upperCase ? 'G' : 'g'));
       break;
     case PS2_KEY_H:
-      w(isUpper ? 'H' : 'h', controlOn);
+      w(isControlPressed ? CTRL_H : (upperCase ? 'H' : 'h'));
       break;
     case PS2_KEY_I:
-      w(isUpper ? 'I' : 'i', controlOn);
+      w(isControlPressed ? CTRL_I : (upperCase ? 'I' : 'i'));
       break;
     case PS2_KEY_J:
-      w(isUpper ? 'J' : 'j', controlOn);
+      w(isControlPressed ? CTRL_J : (upperCase ? 'J' : 'j'));
       break;
     case PS2_KEY_K:
-      w(isUpper ? 'K' : 'k', controlOn);
+      w(isControlPressed ? CTRL_K : (upperCase ? 'K' : 'k'));
       break;
     case PS2_KEY_L:
-      w(isUpper ? 'L' : 'l', controlOn);
+      w(isControlPressed ? CTRL_L : (upperCase ? 'L' : 'l'));
       break;
     case PS2_KEY_M:
-      w(isUpper ? 'M' : 'm', controlOn);
+      w(isControlPressed ? CTRL_M : (upperCase ? 'M' : 'm'));
       break;
     case PS2_KEY_N:
-      w(isUpper ? 'N' : 'n', controlOn);
+      w(isControlPressed ? CTRL_N : (upperCase ? 'N' : 'n'));
       break;
     case PS2_KEY_O:
-      w(isUpper ? 'O' : 'o', controlOn);
+      w(isControlPressed ? CTRL_O : (upperCase ? 'O' : 'o'));
       break;
     case PS2_KEY_P:
-      w(isUpper ? 'P' : 'p', controlOn);
+      w(isControlPressed ? CTRL_P : (upperCase ? 'P' : 'p'));
       break;
     case PS2_KEY_Q:
-      w(isUpper ? 'Q' : 'q', controlOn);
+      w(isControlPressed ? CTRL_Q : (upperCase ? 'Q' : 'q'));
       break;
     case PS2_KEY_R:
-      w(isUpper ? 'R' : 'r', controlOn);
+      w(isControlPressed ? CTRL_R : (upperCase ? 'R' : 'r'));
       break;
     case PS2_KEY_S:
-      w(isUpper ? 'S' : 's', controlOn);
+      w(isControlPressed ? CTRL_S : (upperCase ? 'S' : 's'));
       break;
     case PS2_KEY_T:
-      w(isUpper ? 'T' : 't', controlOn);
+      w(isControlPressed ? CTRL_T : (upperCase ? 'T' : 't'));
       break;
     case PS2_KEY_U:
-      w(isUpper ? 'U' : 'u', controlOn);
+      w(isControlPressed ? CTRL_U : (upperCase ? 'U' : 'u'));
       break;
     case PS2_KEY_V:
-      w(isUpper ? 'V' : 'v', controlOn);
+      w(isControlPressed ? CTRL_V : (upperCase ? 'V' : 'v'));
       break;
     case PS2_KEY_W:
-      w(isUpper ? 'W' : 'w', controlOn);
+      w(isControlPressed ? CTRL_W : (upperCase ? 'W' : 'w'));
       break;
     case PS2_KEY_X:
-      w(isUpper ? 'X' : 'x', controlOn);
+      w(isControlPressed ? CTRL_X : (upperCase ? 'X' : 'x'));
       break;
     case PS2_KEY_Y:
-      w(isUpper ? 'Y' : 'y', controlOn);
+      w(isControlPressed ? CTRL_Y : (upperCase ? 'Y' : 'y'));
       break;
     case PS2_KEY_Z:
-      w(isUpper ? 'Z' : 'z');
+      w(isControlPressed ? CTRL_Z : (upperCase ? 'Z' : 'z'));
       break;
     case PS2_KEY_0:
-      w(isUpper ? ')' : '0');
+      w(upperCase ? ')' : '0');
       break;
     case PS2_KEY_1:
-      w(isUpper ? '!' : '1');
+      w(upperCase ? '!' : '1');
       break;
     case PS2_KEY_2:
-      w(isUpper ? '@' : '2');
+      if (isControlPressed && upperCase) {
+        // ^@
+        w(CTRL_AT);
+      } else {
+        w(upperCase ? '@' : '2');
+      }
       break;
     case PS2_KEY_3:
-      w(isUpper ? '#' : '3');
+      w(upperCase ? '#' : '3');
       break;
     case PS2_KEY_4:
-      w(isUpper ? '$' : '4');
+      w(upperCase ? '$' : '4');
       break;
     case PS2_KEY_5:
-      w(isUpper ? '%' : '5');
+      w(upperCase ? '%' : '5');
       break;
     case PS2_KEY_6:
-      w(isUpper ? '^' : '6');
+      // ^^, ^, or 6
+      w(isControlPressed ? CTRL_HAT : (upperCase ? '^' : '6'));
       break;
     case PS2_KEY_7:
-      w(isUpper ? '&' : '7');
+      w(upperCase ? '&' : '7');
       break;
     case PS2_KEY_8:
-      w(isUpper ? '*' : '8');
+      w(upperCase ? '*' : '8');
       break;
     case PS2_KEY_9:
-      w(isUpper ? '(' : '9');
+      w(upperCase ? '(' : '9');
       break;
       // ******** punctuation
     case PS2_KEY_DOT:
-      w(isUpper ? '>' : '.');
+      w(upperCase ? '>' : '.');
       break;
     case PS2_KEY_DIV:
-      w(isUpper ? '?' : '/');
+      w(upperCase ? '?' : '/');
       break;
     case PS2_KEY_EQUAL:
-      w(isUpper ? '+' : '=');
+      w(upperCase ? '+' : '=');
       break;
     case PS2_KEY_MINUS:
-      w(isUpper ? '_' : '-');
+      // ^_, _, or -
+      w(isControlPressed ? CTRL_SUB : (upperCase ? '_' : '-'));
       break;
     case PS2_KEY_COMMA:
-      w(isUpper ? '<' : ',');
+      w(upperCase ? '<' : ',');
       break;
     case PS2_KEY_APOS:
-      w(isUpper ? '\"' : '\'');
+      w(upperCase ? '\"' : '\'');
       break;
     case PS2_KEY_SEMI:
-      w(isUpper ? ':' : ';');
+      w(upperCase ? ':' : ';');
       break;
     case PS2_KEY_OPEN_SQ:
-      w(isUpper ? '{' : '[');
+      //^[, {, or [
+      w(isControlPressed ? CTRL_OPEN_SQ : (upperCase ? '{' : '['));
       break;
     case PS2_KEY_CLOSE_SQ:
-      w(isUpper ? '}' : ']');
-      break;
-    case PS2_KEY_BACK:
-      w(isUpper ? '|' : '\\');
+      //^[, {, or [
+      w(isControlPressed ? CTRL_CLOSE_SQ : (upperCase ? '}' : ']'));
       break;
     case PS2_KEY_SPACE:
       w(' ');
       break;
-
+    case PS2_KEY_BACK:
+       w(isControlPressed ? CTRL_BACK : (upperCase ? '|' : '\\'));
+      break;
     default:
 #ifdef DEBUG
       Serial.print("NOOP");
 #endif
       break;
   }
-
-  //  }
-
-  //todo: add keypad handling
 }
 
 /** Write to serial with debug magic*/
-void w(char code) {
+void w(int code) {
 #ifdef DEBUG
-  Serial.print("(");
+  Serial.print("Output: (");
   Serial.print(code, HEX);
-  Serial.print(")");
+  Serial.print(")\n");
 #else
   Serial.write(code);
 #endif
-}
-
-/**
- * shift to the upper range of the ASCII table
- */
-void w(char code, int shift) {
-  w(shift ? (code | 0x80) : code); // shift 8th bit on if contrl
 }
 
 /*** 
@@ -470,8 +445,8 @@ void reset() {
 #ifdef DEBUG
   Serial.print("RESET\n");
 #else
-  digitalWrite(mbc_reset_pin, LOW);
+  digitalWrite(MBC_RESET_PIN, LOW);
   delay(500);
-  digitalWrite(mbc_reset_pin, HIGH);
+  digitalWrite(MBC_RESET_PIN, HIGH);
 #endif
 }
