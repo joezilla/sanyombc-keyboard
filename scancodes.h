@@ -60,7 +60,7 @@
 #define CTRL_AT 0x00        // ^@ - null character
 #define CTRL_A 0x01         // ^A - start of header
 #define CTRL_B 0x02         // ^B - start of text
-#define CTRL_C 0x03         // ^C - end of text
+#define CTRL_C 0x03         // ^C - end of text -- verified to work
 #define CTRL_D 0x04         // ^D - end-of-transmission
 #define CTRL_E 0x05         // ^E - enquiry
 #define CTRL_F 0x06         // ^F - acknowledge
