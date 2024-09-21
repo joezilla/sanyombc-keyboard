@@ -15,10 +15,12 @@ According to the technical manual, the keyboard operates at 1200 baud, with 8 da
 ## PS2 Connector
 See this article for pinout: https://www.instructables.com/Connect-PS2-Keyboard-to-Arduino/
 
+```
 5V     :- Arduino 5V out
 Ground :- Arduino GND
 Clock  :- Arduino Pin 3  (has to be 3 as it's an interrupt pin)
 Data   :- Arduino Pin 8  (can be changed if needed)
+```
 
 ## Sanyo Keyboard Connector
 To connect the circuit to the Arduino, honor the following pinout (looking at the female connector):
@@ -36,7 +38,7 @@ To connect the circuit to the Arduino, honor the following pinout (looking at th
   o4 = GND (to Arduino GND)
   o5 = reset (to Arduino pin 6) 
  ```
- 
+
 ## Flashing Firmware
 Easily done via the USB connector. Do not flash firmware while connected to the Sanyo (conflict of the serial port).
 
