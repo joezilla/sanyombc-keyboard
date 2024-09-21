@@ -23,18 +23,20 @@ Data   :- Arduino Pin 8  (can be changed if needed)
 ## Sanyo Keyboard Connector
 To connect the circuit to the Arduino, honor the following pinout (looking at the female connector):
 
+```
     ==\/==   
   = o3  o1 =      
   = o5  o4 =
    =  o2  = 
      ====
 
- o1 = data (to Arduino TX)
- o2 = not used
- o3 = VCC (not used if Arduino powered externally)
- o4 = GND (to Arduino GND)
- o5 = reset (to Arduino pin 6) 
-
+  o1 = data (to Arduino TX)
+  o2 = not used
+  o3 = VCC (not used if Arduino powered externally)
+  o4 = GND (to Arduino GND)
+  o5 = reset (to Arduino pin 6) 
+ ```
+ 
 ## Flashing Firmware
 Easily done via the USB connector. Do not flash firmware while connected to the Sanyo (conflict of the serial port).
 
