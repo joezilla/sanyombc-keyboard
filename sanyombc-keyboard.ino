@@ -43,7 +43,7 @@ const int MBC_SR_CFG = SERIAL_8E2;  // 8 data, 2 stop bits
 // output pin for reset
 const int mbc_reset_pin = 6;  // reset pin to MBC; pulled to low for reset
 
-// key codes per MBC manual
+// key codes per MBC manu al
 const int MBC_END = 0x1;
 const int MBC_PG_DOWN = 0x2;    // num pad
 const int MBC_SCRL_LOCK = 0x3;  // LOCK key on bottom left
@@ -163,11 +163,11 @@ void translate(uint16_t scanCode) {
   switch (character) {
     // main enter
     case PS2_KEY_ENTER:
-      w(MBC_ENTER);
+      w(MBC_RETURN);
       break;
       // return (keypad)
     case PS2_KEY_KP_ENTER:
-      w(MBC_RETURN);
+      w(MBC_ENTER);
       break;
     case PS2_KEY_DELETE:
       if (controlOn && altKey)
@@ -223,6 +223,18 @@ void translate(uint16_t scanCode) {
       break;
     case PS2_KEY_KP_EQUAL:
       w('=');
+      break;
+    case PS2_KEY_KP_MINUS:
+      w('-');
+      break;
+    case PS2_KEY_KP_PLUS:
+      w('+');
+      break;
+    case PS2_KEY_KP_TIMES:
+      w('*');
+      break;
+    case PS2_KEY_KP_DOT:
+      w('.');
       break;
     // keypad w/o numlock
     case PS2_KEY_END:
@@ -353,10 +365,9 @@ void translate(uint16_t scanCode) {
     case PS2_KEY_Y:
       w(isUpper ? 'Y' : 'y', controlOn);
       break;
-      break;
     case PS2_KEY_Z:
       w(isUpper ? 'Z' : 'z');
-    // ******** numbers
+      break;
     case PS2_KEY_0:
       w(isUpper ? ')' : '0');
       break;
@@ -404,7 +415,7 @@ void translate(uint16_t scanCode) {
       w(isUpper ? '<' : ',');
       break;
     case PS2_KEY_APOS:
-      w(isUpper ? '\'' : '\'');
+      w(isUpper ? '\"' : '\'');
       break;
     case PS2_KEY_SEMI:
       w(isUpper ? ':' : ';');
