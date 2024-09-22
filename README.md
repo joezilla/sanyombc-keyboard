@@ -63,12 +63,18 @@ shift, control, and graph states. For example, key 1 produces 31h ('1') unshifte
 The funnest part is that the serial protocol uses the parity bit as part of the scan codes. The computer
 expects parity errors to trigger CTRL behavior on most characters. 
 
-## Graph Mode
-This firmware supports the GRAPH mode using the right ALT key on the keyboard. Unlike the original MBC, ALT doesn't
+## Graph Mode (future release)
+This firmware will support the GRAPH mode using the right ALT key on the keyboard. Unlike the original MBC, ALT doesn't
 toggle, keeping right alt (AltGr) pushed with the appropriate character will send the graphical character:
 
+*Graph*
 ![Graph keyboard layout](resources/graphmode.png?raw=true "Graph keyboard layout")
 
+*Graph-Shift*
+![Graph Shift keyboard layout](resources/graph-shift.png?raw=true "Graph-shift keyboard layout")
+
+*Graph-Ctrl*
+![Graph Ctrl keyboard layout](resources/graph-ctrl.png?raw=true "Graph-ctrl keyboard layout")
 
 ## Limitations
 + Sanyo graphics characters not yet implemented (including graph-keymode)
