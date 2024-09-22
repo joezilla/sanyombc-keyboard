@@ -19,7 +19,19 @@
 /****************************************************************************/
 
 /**
- * Sanyo keyboard scan codes. Predominanly based on standard ASCII codes.
+ * @file scancodes.h
+ * @brief Sanyo MBC 550/555 keyboard scan codes
+ *
+ * This file defines the scan codes for the Sanyo MBC 550/555 keyboard.
+ * The codes are predominantly based on standard ASCII codes, with
+ * some specific additions for function keys and special characters.
+ *
+ * The scan codes are divided into three main categories:
+ * 1. MBC-specific scan codes
+ * 2. ASCII control characters (used for CTRL key combinations)
+ * 3. Standard ASCII characters (not explicitly defined here)
+ *
+ * @note Some scan codes may differ from standard ASCII or typical keyboard layouts.
  */
 
 // ---------------------------------------------------
@@ -56,27 +68,28 @@
 
 // ---------------------------------------------------
 // CTRL characters based on ascii control characters
+// note: most of these are ASCII and not used.
 // ---------------------------------------------------
 #define CTRL_AT 0x00        // ^@ - null character
 #define CTRL_A 0x01         // ^A - start of header
 #define CTRL_B 0x02         // ^B - start of text
-#define CTRL_C 0x03         // ^C - end of text -- verified to work
+#define CTRL_C 0x03         // ^C - end of text           -- verified to work
 #define CTRL_D 0x04         // ^D - end-of-transmission
 #define CTRL_E 0x05         // ^E - enquiry
 #define CTRL_F 0x06         // ^F - acknowledge
-#define CTRL_G 0x07         // ^G - bel
-#define CTRL_H 0x08         // ^H - backspace
-#define CTRL_I 0x09         // ^I - tab
-#define CTRL_J 0x0A         // ^J - linefeed
-#define CTRL_K 0x0B         // ^K - vertical tab
+#define CTRL_G 0x07         // ^G - bel                   -- this appears to really be CTRL-R
+#define CTRL_H 0x08         // ^H - backspace             -- verified to work
+#define CTRL_I 0x09         // ^I - tab                   -- verified to work
+#define CTRL_J 0x0A         // ^J - linefeed              -- verified to woork
+#define CTRL_K 0x0B         // ^K - vertical tab          -- this appears to really be CTRL-L
 #define CTRL_L 0x0C         // ^L - form feed
-#define CTRL_M 0x0D         // ^M - carriage return
+#define CTRL_M 0x0D         // ^M - carriage return       -- verified to work
 #define CTRL_N 0x0E         // ^N - shift out
 #define CTRL_O 0x0F         // ^O - shift in
 #define CTRL_P 0x10         // ^P - data link scape
 #define CTRL_Q 0x11         // ^Q - transmit on
 #define CTRL_R 0x12         // ^R - device control 2
-#define CTRL_S 0x13         // ^S - transmit off
+#define CTRL_S 0x13         // ^S - transmit off          -- this appears to really be CTRL-M
 #define CTRL_T 0x14         // ^T - device ctrl 4
 #define CTRL_U 0x15         // ^U - negative ack
 #define CTRL_V 0x16         // ^V - synchronous idle
@@ -89,7 +102,6 @@
 #define CTRL_CLOSE_SQ 0x1d  // ^] - Group separator
 #define CTRL_HAT 0x1e       // ^^ - Record separator
 #define CTRL_SUB 0x1f       // ^_ - Unit separator
-
 
 // ---------------------------------------------------
 // additional control characters per
@@ -106,7 +118,60 @@
 #define CTRL_F9 0x70
 #define CTRL_F10 0x71
 #define CTRL_END 0x75
-#define CTRL_PGDB 0x76
+#define CTRL_PGDN 0x76
 #define CTRL_TAB 0x09
 #define CTRL_ENTER 0x75
 #define CTRL_HOME 0x77
+
+// ---------------------------------------------------
+// Graph mode, per Sanyo manual
+// ---------------------------------------------------
+#define GRAPH_A 0x1C
+#define GRAPH_B 0x0
+#define GRAPH_C 0x0
+#define GRAPH_D 0x0
+#define GRAPH_E 0x0
+#define GRAPH_F 0x0
+#define GRAPH_G 0x0
+#define GRAPH_H 0x0
+#define GRAPH_I 0x0
+#define GRAPH_J 0x0
+#define GRAPH_K 0x0
+#define GRAPH_L 0x0
+#define GRAPH_M 0x0
+#define GRAPH_N 0x0
+#define GRAPH_O 0x0
+#define GRAPH_P 0x0
+#define GRAPH_Q 0x0
+#define GRAPH_R 0x0
+#define GRAPH_S 0x0
+#define GRAPH_T 0x0
+#define GRAPH_U 0x0
+#define GRAPH_V 0x0
+#define GRAPH_W 0x0
+#define GRAPH_X 0x0
+#define GRAPH_Y 0x0
+#define GRAPH_Z 0x0
+#define GRAPH_0 0x0
+#define GRAPH_1 0x0
+#define GRAPH_2 0x0
+#define GRAPH_3 0x0
+#define GRAPH_4 0x0
+#define GRAPH_5 0x0
+#define GRAPH_6 0x0
+#define GRAPH_8 0x0
+#define GRAPH_9 0x0
+#define GRAPH_OPEN_SQ 0x0
+#define GRAPH_CLOSE_SQ 0x0
+#define GRAPH_SEMI 0x0
+#define GRAPG_QUOT 0x0
+#define GRAPH_DOT 0x0
+#define GRAPH_DIV 0x0
+#define GRAPH_STAR 0x0
+
+
+
+
+
+
+

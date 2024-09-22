@@ -49,14 +49,26 @@ the keyboard.
 
 ## Reset
 The Sanyo uses a dedicated line that has to be pulled to GND to reset. This firmare triggers pin 6 to low 
-if CTRL-ALT-DEL are pressed simultaneously which is not the Sanyo's original behavior but familiar from DOS days.
+if **CTRL-ALT-DEL** are pressed simultaneously which is not the Sanyo's original behavior but familiar behavior
+from other IBM clones.
+
+## Raw ASCIII mode
+This mode allows submitting any ascii character code (0x00-0xFF) to the computer. Hitting **CTRL-ALT-A** followed by two
+ascii characters releases these characters to the computer.
 
 ## Protocol
-Reverse engineering of keyboard protocol based on https://github.com/toncho11/Sanyo_MBC_555_keyboard_converter. 
+The scancodes received correspond mostly to ASCII, with keys producing different scancodes in different 
+shift, control, and graph states. For example, key 1 produces 31h ('1') unshifted, but 21h ('!') shifted. 
 
-The scancodes received appear to correspond to ASCII, with keys producing different scancodes in different 
-shift states. For example, key 1 produces 31h ('1') unshifted, but 21h ('!') shifted. 
+The funnest part is that the serial protocol uses the parity bit as part of the scan codes. The computer
+expects parity errors to trigger CTRL behavior on most characters. 
+
+## Graph Mode
+This firmware supports the GRAPH mode using the right ALT key on the keyboard. Unlike the original MBC, ALT doesn't
+toggle, keeping right alt (AltGr) pushed with the appropriate character will send the graphical character:
+
+![Graph keyboard layout](resources/graphmode.png?raw=true "Graph keyboard layout")
+
 
 ## Limitations
 + Sanyo graphics characters not yet implemented (including graph-keymode)
-+ Control keys are wonky, apparently mapping to ASCII doesn't work except for ^C.
