@@ -1,0 +1,7 @@
+# Build artifacts
+test/test_keyboard
+*.dSYM/
+*.o
+
+# macOS
+.DS_Store

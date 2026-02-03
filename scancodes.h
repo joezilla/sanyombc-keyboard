@@ -1,5 +1,7 @@
+#ifndef SCANCODES_H
+#define SCANCODES_H
 /****************************************************************************/
-/* Sanyo MBC 550/555 keyboard adapter firmare                               */
+/* Sanyo MBC 550/555 keyboard adapter firmware                              */
 /*                                                                          */
 /* Copyright (C) 2024 Jochen Toppe                                          */
 /*                                                                          */
@@ -159,15 +161,18 @@
 #define GRAPH_4 0x0
 #define GRAPH_5 0x0
 #define GRAPH_6 0x0
+#define GRAPH_7 0x0
 #define GRAPH_8 0x0
 #define GRAPH_9 0x0
 #define GRAPH_OPEN_SQ 0x0
 #define GRAPH_CLOSE_SQ 0x0
 #define GRAPH_SEMI 0x0
-#define GRAPG_QUOT 0x0
+#define GRAPH_QUOT 0x0
 #define GRAPH_DOT 0x0
 #define GRAPH_DIV 0x0
 #define GRAPH_STAR 0x0
+
+#endif /* SCANCODES_H */
 
 
 

@@ -1,5 +1,5 @@
 /****************************************************************************/
-/* Sanyo MBC 550/555 keyboard adapter firmare                               */
+/* Sanyo MBC 550/555 keyboard adapter firmware                              */
 /*                                                                          */
 /* Copyright (C) 2024 Jochen Toppe                                          */
 /*                                                                          */
@@ -20,7 +20,7 @@
 
 /**
  * @file sanyombc-keyboard.ino
- * @author Joezilla
+ * @author MrEppot
  * @brief Keyboard adapter firmware for Sanyo MBC 550/555 computers
  *
  * This firmware translates modern PS/2 keyboard input to the format
@@ -44,7 +44,7 @@
 
 // You can activate debug mode that outputs to the serial console
 // For debugging and plugging the arduino directly into a
-// computer's usb/serial. Don't enable in final firmare.
+// computer's usb/serial. Don't enable in final firmware.
 // #define DEBUG 1 // detail keystroke and program info
 // #define OUTPUT_DEBUG 1 // just outputs the final hex characters readable
 
@@ -62,7 +62,7 @@
 
 // ps2 adapter pins
 const int KB_DATAPIN = 8;  // ps2 data pin
-const int KB_IRQPIN = 3;   // ps2 clxock pin. has to be on 2 or 3 (interrupt pin)
+const int KB_IRQPIN = 3;   // ps2 clock pin. has to be on 2 or 3 (interrupt pin)
 
 // serial configuration as per MBC-555 specifications
 const int MBC_BAUD = 1200;          // 1200 baud
@@ -73,6 +73,9 @@ const int MBC_RESET_PIN = 6;  // reset pin to MBC; pulled to low for reset
 
 // macro
 #define CHECK_BIT(var, pos) ((var) & (1 << (pos))) > 0
+
+// shifted digit symbols: index 0=')', 1='!', ... 9='('
+static const char SHIFTED_DIGITS[] = ")!@#$%^&*(";
 
 PS2KeyAdvanced keyboard;
 // character from ps2
@@ -85,6 +88,16 @@ bool isAnyAltPressed;
 bool isCapsLockOn;
 bool isShiftPressed;
 bool upperCase;
+
+// forward declarations
+void processScanCode();
+void processWithControl(int aCharacter);
+void handleGraphMode(int character);
+void sendToMBC(int code);
+void writeWithParityError(int c);
+void reset();
+void capture();
+void disableCaptureMode();
 
 /**
  * @brief Initialize hardware and configure keyboard settings
@@ -130,7 +143,7 @@ int hex_to_int(const char* hex) {
 }
 
 // buffer to store characters
-static char hexBuffer[10] = "";  // Buffer to store hex characters
+static char hexBuffer[3] = "";   // 2 hex chars + null terminator
 static int bufferIndex = 0;      // Buffer index
 bool captureMode = false;
 
@@ -148,6 +161,25 @@ void loop() {
       processScanCode();
     }
   }
+}
+
+
+/**
+ * @brief Write a character code to the serial output
+ *
+ * This function sends the translated character code to the MBC.
+ * In debug mode, it prints additional information about the output.
+ *
+ * @param code The character code to be sent
+ */
+void sendToMBC(int code) {
+#ifdef OUTPUT_DEBUG
+  Serial.print("Output: (");
+  Serial.print(code, HEX);
+  Serial.print(")\n");
+#else
+  Serial.write(code);
+#endif
 }
 
 
@@ -220,286 +252,138 @@ void processScanCode() {
     return;
   }
 
-  // regular character
+  // --- Letters A-Z ---
+  if (character >= PS2_KEY_A && character <= PS2_KEY_Z) {
+    char base = 'a' + (character - PS2_KEY_A);
+    sendToMBC(upperCase ? toupper(base) : base);
+    return;
+  }
+
+  // --- Digits 0-9 with shifted symbols ---
+  if (character >= PS2_KEY_0 && character <= PS2_KEY_9) {
+    int idx = character - PS2_KEY_0;
+    sendToMBC(upperCase ? SHIFTED_DIGITS[idx] : ('0' + idx));
+    return;
+  }
+
+  // --- Function keys F1-F10 ---
+  if (character >= PS2_KEY_F1 && character <= PS2_KEY_F10) {
+    sendToMBC(MBC_F1 + (character - PS2_KEY_F1));
+    return;
+  }
+
+  // --- Keypad digits 0-9 ---
+  if (character >= PS2_KEY_KP0 && character <= PS2_KEY_KP9) {
+    sendToMBC('0' + (character - PS2_KEY_KP0));
+    return;
+  }
+
+  // --- Remaining special keys ---
   switch (character) {
     // main enter
     case PS2_KEY_ENTER:
-      w(MBC_RETURN);
+      sendToMBC(MBC_RETURN);
       break;
       // return (keypad)
     case PS2_KEY_KP_ENTER:
-      w(MBC_ENTER);
+      sendToMBC(MBC_ENTER);
       break;
     case PS2_KEY_DELETE:
-      w(MBC_BACKSPACE);  // backspace
+      sendToMBC(MBC_BACKSPACE);  // backspace
       break;
     case PS2_KEY_BS:
-      w(MBC_BACKSPACE);
+      sendToMBC(MBC_BACKSPACE);
       break;
     case PS2_KEY_INSERT:
-      w(MBC_INSERT);
+      sendToMBC(MBC_INSERT);
       break;
     case PS2_KEY_TAB:
-      w(upperCase ? MBC_BACKTAB : MBC_TAB);
+      sendToMBC(upperCase ? MBC_BACKTAB : MBC_TAB);
       break;
     case PS2_KEY_BREAK:
       Serial.write(CTRL_C);  // todo: not sure what break sends
       break;
     case PS2_KEY_ESC:
-      w(MBC_ESC);
+      sendToMBC(MBC_ESC);
       break;
-    case PS2_KEY_KP0:
-      w('0');
-      break;
-    // *** Keypad Numbers with num lock on
-    case PS2_KEY_KP1:
-      w('1');
-      break;
-    case PS2_KEY_KP2:
-      w('2');
-      break;
-    case PS2_KEY_KP3:
-      w('3');
-      break;
-    case PS2_KEY_KP4:
-      w('4');
-      break;
-    case PS2_KEY_KP5:
-      w('5');
-      break;
-    case PS2_KEY_KP6:
-      w('6');
-      break;
-    case PS2_KEY_KP7:
-      w('7');
-      break;
-    case PS2_KEY_KP8:
-      w('8');
-      break;
-    case PS2_KEY_KP9:
-      w('9');
-      break;
+    // keypad operators
     case PS2_KEY_KP_EQUAL:
-      w('=');
+      sendToMBC('=');
       break;
     case PS2_KEY_KP_MINUS:
-      w('-');
+      sendToMBC('-');
       break;
     case PS2_KEY_KP_PLUS:
-      w('+');
+      sendToMBC('+');
       break;
     case PS2_KEY_KP_DIV:
-      w('/');
+      sendToMBC('/');
       break;
     case PS2_KEY_KP_TIMES:
-      w('*');
+      sendToMBC('*');
       break;
     case PS2_KEY_KP_DOT:
-      w('.');
+      sendToMBC('.');
       break;
-    // keypad w/o numlock
+    // navigation keys
     case PS2_KEY_END:
-      w(MBC_END);
+      sendToMBC(MBC_END);
       break;
     case PS2_KEY_PGUP:
-      w(MBC_PG_UP);
+      sendToMBC(MBC_PG_UP);
       break;
     case PS2_KEY_PGDN:
-      w(MBC_PG_DOWN);
+      sendToMBC(MBC_PG_DOWN);
       break;
     case PS2_KEY_L_ARROW:
-      w(MBC_CRS_LEFT);
+      sendToMBC(MBC_CRS_LEFT);
       break;
     case PS2_KEY_R_ARROW:
-      w(MBC_CRS_RIGHT);
+      sendToMBC(MBC_CRS_RIGHT);
       break;
     case PS2_KEY_DN_ARROW:
-      w(MBC_CRS_DOWN);
+      sendToMBC(MBC_CRS_DOWN);
       break;
     case PS2_KEY_UP_ARROW:
-      w(MBC_CRS_UP);
+      sendToMBC(MBC_CRS_UP);
       break;
     case PS2_KEY_HOME:
-      w(MBC_HOME);
+      sendToMBC(MBC_HOME);
       break;
-    // function keys
-    case PS2_KEY_F1:
-      w(MBC_F1);
-      break;
-    case PS2_KEY_F2:
-      w(MBC_F2);
-      break;
-    case PS2_KEY_F3:
-      w(MBC_F3);
-      break;
-    case PS2_KEY_F4:
-      w(MBC_F4);
-      break;
-    case PS2_KEY_F5:
-      w(MBC_F5);
-      break;
-    case PS2_KEY_F6:
-      w(MBC_F6);
-      break;
-    case PS2_KEY_F7:
-      w(MBC_F7);
-      break;
-    case PS2_KEY_F8:
-      w(MBC_F8);
-      break;
-    case PS2_KEY_F9:
-      w(MBC_F9);
-      break;
-    case PS2_KEY_F10:
-      w(MBC_F10);
-      break;
-      // ******* regular characters
-    case PS2_KEY_A:
-      w(upperCase ? 'A' : 'a');
-      break;
-    case PS2_KEY_B:
-      w(upperCase ? 'B' : 'b');
-      break;
-    case PS2_KEY_C:
-      w(upperCase ? 'C' : 'c');
-      break;
-    case PS2_KEY_D:
-      w(upperCase ? 'D' : 'd');
-      break;
-    case PS2_KEY_E:
-      w(upperCase ? 'E' : 'e');
-      break;
-    case PS2_KEY_F:
-      w(upperCase ? 'F' : 'f');
-      break;
-    case PS2_KEY_G:
-      w(upperCase ? 'G' : 'g');
-      break;
-    case PS2_KEY_H:
-      w(upperCase ? 'H' : 'h');
-      break;
-    case PS2_KEY_I:
-      w(upperCase ? 'I' : 'i');
-      break;
-    case PS2_KEY_J:
-      w(upperCase ? 'J' : 'j');
-      break;
-    case PS2_KEY_K:
-      w(upperCase ? 'K' : 'k');
-      break;
-    case PS2_KEY_L:
-      w(upperCase ? 'L' : 'l');
-      break;
-    case PS2_KEY_M:
-      w(upperCase ? 'M' : 'm');
-      break;
-    case PS2_KEY_N:
-      w(upperCase ? 'N' : 'n');
-      break;
-    case PS2_KEY_O:
-      w(upperCase ? 'O' : 'o');
-      break;
-    case PS2_KEY_P:
-      w(upperCase ? 'P' : 'p');
-      break;
-    case PS2_KEY_Q:
-      w(upperCase ? 'Q' : 'q');
-      break;
-    case PS2_KEY_R:
-      w(upperCase ? 'R' : 'r');
-      break;
-    case PS2_KEY_S:
-      w(upperCase ? 'S' : 's');
-      break;
-    case PS2_KEY_T:
-      w(upperCase ? 'T' : 't');
-      break;
-    case PS2_KEY_U:
-      w(upperCase ? 'U' : 'u');
-      break;
-    case PS2_KEY_V:
-      w(upperCase ? 'V' : 'v');
-      break;
-    case PS2_KEY_W:
-      w(upperCase ? 'W' : 'w');
-      break;
-    case PS2_KEY_X:
-      w(upperCase ? 'X' : 'x');
-      break;
-    case PS2_KEY_Y:
-      w(upperCase ? 'Y' : 'y');
-      break;
-    case PS2_KEY_Z:
-      w(upperCase ? 'Z' : 'z');
-      break;
-    case PS2_KEY_0:
-      w(upperCase ? ')' : '0');
-      break;
-    case PS2_KEY_1:
-      w(upperCase ? '!' : '1');
-      break;
-    case PS2_KEY_2:
-      w(upperCase ? '@' : '2');
-      break;
-    case PS2_KEY_3:
-      w(upperCase ? '#' : '3');
-      break;
-    case PS2_KEY_4:
-      w(upperCase ? '$' : '4');
-      break;
-    case PS2_KEY_5:
-      w(upperCase ? '%' : '5');
-      break;
-    case PS2_KEY_6:
-      // ^^, ^, or 6
-      w(upperCase ? '^' : '6');
-      break;
-    case PS2_KEY_7:
-      w(upperCase ? '&' : '7');
-      break;
-    case PS2_KEY_8:
-      w(upperCase ? '*' : '8');
-      break;
-    case PS2_KEY_9:
-      w(upperCase ? '(' : '9');
-      break;
-      // ******** punctuation
+    // punctuation
     case PS2_KEY_DOT:
-      w(upperCase ? '>' : '.');
+      sendToMBC(upperCase ? '>' : '.');
       break;
     case PS2_KEY_DIV:
-      w(upperCase ? '?' : '/');
+      sendToMBC(upperCase ? '?' : '/');
       break;
     case PS2_KEY_EQUAL:
-      w(upperCase ? '+' : '=');
+      sendToMBC(upperCase ? '+' : '=');
       break;
     case PS2_KEY_MINUS:
-      // ^_, _, or -
-      w(upperCase ? '_' : '-');
+      sendToMBC(upperCase ? '_' : '-');
       break;
     case PS2_KEY_COMMA:
-      w(upperCase ? '<' : ',');
+      sendToMBC(upperCase ? '<' : ',');
       break;
     case PS2_KEY_APOS:
-      w(upperCase ? '\"' : '\'');
+      sendToMBC(upperCase ? '\"' : '\'');
       break;
     case PS2_KEY_SEMI:
-      w(upperCase ? ':' : ';');
+      sendToMBC(upperCase ? ':' : ';');
       break;
     case PS2_KEY_OPEN_SQ:
-      //^[, {, or [
-      w(upperCase ? '{' : '[');
+      sendToMBC(upperCase ? '{' : '[');
       break;
     case PS2_KEY_CLOSE_SQ:
-      //^[, {, or [
-      w(upperCase ? '}' : ']');
+      sendToMBC(upperCase ? '}' : ']');
       break;
     case PS2_KEY_SPACE:
-      w(' ');
+      sendToMBC(' ');
       break;
     // backslash
     case PS2_KEY_BACK:
-      w(upperCase ? '|' : '\\');
+      sendToMBC(upperCase ? '|' : '\\');
       break;
     default:
 #ifdef DEBUG
@@ -520,178 +404,69 @@ void handleGraphMode(int character) {
   // not yet implemented
   switch (character) {
     case PS2_KEY_A:
-      w(GRAPH_A);
+      sendToMBC(GRAPH_A);
       break;
     default:
       break;
   }
 }
 
-/**
- * @brief Write a character code to the serial output
- *
- * This function sends the translated character code to the MBC.
- * In debug mode, it prints additional information about the output.
- *
- * @param code The character code to be sent
- */
-void w(int code) {
-#ifdef OUTPUT_DEBUG
-  Serial.print("Output: (");
-  Serial.print(code, HEX);
-  Serial.print(")\n");
-#else
-  Serial.write(code);
-#endif
-}
 
 /** experimental control */
 void processWithControl(int aCharacter) {
 
-  switch (aCharacter) {
-    case PS2_KEY_A:
-      // enable capture mode if CTRL-ALT-A is pressed
-      if (isControlPressed && isAltPressed) {
+  // --- Letters A-Z with CTRL ---
+  if (aCharacter >= PS2_KEY_A && aCharacter <= PS2_KEY_Z) {
+    // CTRL-ALT-A enables capture mode
+    if (aCharacter == PS2_KEY_A && isAltPressed) {
 #ifdef DEBUG
-        Serial.println("CAP_ON");
+      Serial.println("CAP_ON");
 #endif
-        captureMode = true;
-      } else {
-        writeWithParityError(upperCase ? 'A' : 'a');
-      }
-      break;
-    case PS2_KEY_B:
-      writeWithParityError(upperCase ? 'B' : 'b');
-      break;
-      // ctrl-c is a special case
-    case PS2_KEY_C:
-      w(CTRL_C);
-      break;
-    case PS2_KEY_D:
-      writeWithParityError(upperCase ? 'D' : 'd');
-      break;
-    case PS2_KEY_E:
-      writeWithParityError(upperCase ? 'E' : 'e');
-      break;
-    case PS2_KEY_F:
-      writeWithParityError(upperCase ? 'F' : 'f');
-      break;
-    case PS2_KEY_G:
-      writeWithParityError(upperCase ? 'G' : 'g');
-      break;
-    case PS2_KEY_H:
-      writeWithParityError(upperCase ? 'H' : 'h');
-      break;
-    case PS2_KEY_I:
-      writeWithParityError(upperCase ? 'I' : 'j');
-      break;
-    case PS2_KEY_J:
-      writeWithParityError(upperCase ? 'J' : 'j');
-      break;
-    case PS2_KEY_K:
-      writeWithParityError(upperCase ? 'K' : 'k');
-      break;
-    case PS2_KEY_L:
-      writeWithParityError(upperCase ? 'L' : 'l');
-      break;
-    case PS2_KEY_M:
-      writeWithParityError(upperCase ? 'M' : 'm');
-      break;
-    case PS2_KEY_N:
-      writeWithParityError(upperCase ? 'N' : 'n');
-      break;
-    case PS2_KEY_O:
-      writeWithParityError(upperCase ? 'O' : 'o');
-      break;
-    case PS2_KEY_P:
-      writeWithParityError(upperCase ? 'P' : 'p');
-      break;
-    case PS2_KEY_Q:
-      writeWithParityError(upperCase ? 'Q' : 'q');
-      break;
-    case PS2_KEY_R:
-      writeWithParityError(upperCase ? 'R' : 'r');
-      break;
-    case PS2_KEY_S:
-      writeWithParityError(upperCase ? 'S' : 's');
-      break;
-    case PS2_KEY_T:
-      writeWithParityError(upperCase ? 'T' : 't');
-      break;
-    case PS2_KEY_U:
-      writeWithParityError(upperCase ? 'U' : 'y');
-      break;
-    case PS2_KEY_V:
-      writeWithParityError(upperCase ? 'V' : 'v');
-      break;
-    case PS2_KEY_W:
-      writeWithParityError(upperCase ? 'W' : 'w');
-      break;
-    case PS2_KEY_X:
-      writeWithParityError(upperCase ? 'X' : 'x');
-      break;
-    case PS2_KEY_Y:
-      writeWithParityError(upperCase ? 'Y' : 'y');
-      break;
-    case PS2_KEY_Z:
-      writeWithParityError(upperCase ? 'Z' : 'z');
-      break;
-    // function keys -- all special cases again
-    case PS2_KEY_F1:
-      w(CTRL_F1);
-      break;
-    case PS2_KEY_F2:
-      w(CTRL_F2);
-      break;
-    case PS2_KEY_F3:
-      w(CTRL_F3);
-      break;
-    case PS2_KEY_F4:
-      w(CTRL_F4);
-      break;
-    case PS2_KEY_F5:
-      w(CTRL_F5);
-      break;
-    case PS2_KEY_F6:
-      w(CTRL_F6);
-      break;
-    case PS2_KEY_F7:
-      w(CTRL_F7);
-      break;
-    case PS2_KEY_F8:
-      w(CTRL_F8);
-      break;
-    case PS2_KEY_F9:
-      w(CTRL_F9);
-      break;
-    case PS2_KEY_F10:
-      w(CTRL_F10);
-      break;
+      captureMode = true;
+      return;
+    }
+    // CTRL-C is a special case: sent directly without parity error
+    if (aCharacter == PS2_KEY_C) {
+      sendToMBC(CTRL_C);
+      return;
+    }
+    char base = 'a' + (aCharacter - PS2_KEY_A);
+    writeWithParityError(upperCase ? toupper(base) : base);
+    return;
+  }
+
+  // --- Function keys F1-F10 with CTRL ---
+  if (aCharacter >= PS2_KEY_F1 && aCharacter <= PS2_KEY_F10) {
+    sendToMBC(CTRL_F1 + (aCharacter - PS2_KEY_F1));
+    return;
+  }
+
+  // --- Remaining CTRL special keys ---
+  switch (aCharacter) {
     case PS2_KEY_OPEN_SQ:
-      w(CTRL_OPEN_SQ);
+      sendToMBC(CTRL_OPEN_SQ);
       break;
     case PS2_KEY_CLOSE_SQ:
-      //^[, {, or [
-      w(CTRL_CLOSE_SQ);
+      sendToMBC(CTRL_CLOSE_SQ);
       break;
     case PS2_KEY_END:
-      w(CTRL_END);
+      sendToMBC(CTRL_END);
       break;
     case PS2_KEY_PGDN:
-      w(CTRL_PGDN);
+      sendToMBC(CTRL_PGDN);
       break;
     case PS2_KEY_TAB:
-      w(CTRL_TAB);
+      sendToMBC(CTRL_TAB);
       break;
     case PS2_KEY_ENTER:
-      w(CTRL_ENTER);
+      sendToMBC(CTRL_ENTER);
       break;
       // return (keypad)
     case PS2_KEY_KP_ENTER:
-      w(CTRL_ENTER);
+      sendToMBC(CTRL_ENTER);
       break;
     case PS2_KEY_HOME:
-      w(CTRL_HOME);
+      sendToMBC(CTRL_HOME);
       break;
     default:
       break;
@@ -703,13 +478,15 @@ void processWithControl(int aCharacter) {
  * Yes, the parity bit is part of the scan codes.
  */
 void writeWithParityError(int c) {
-  // trigger a parity error
+  // ensure all pending data is transmitted before switching parity
+  Serial.flush();
   Serial.end();
   Serial.begin(MBC_BAUD, SERIAL_8O2);
 
-  w(c);
+  sendToMBC(c);
 
-  // continue
+  // ensure the odd-parity byte is fully transmitted before switching back
+  Serial.flush();
   Serial.end();
   Serial.begin(MBC_BAUD, MBC_SR_CFG);
 }
@@ -760,16 +537,13 @@ void capture() {
 
   // toggle off if CTRL-ALT-A pressed again
   if (character == PS2_KEY_A && isControlPressed && isAltPressed) {
-    captureMode = false;
-#ifdef DEBUG
-    Serial.println("CAP_OFF");
-#endif
+    disableCaptureMode();
     return;
   }
 
   // Check if character is a valid hexadecimal character, if so, save it to the buffer
   if (isxdigit(character)) {
-    if (bufferIndex < sizeof(hexBuffer) - 1) {
+    if (bufferIndex < (int)(sizeof(hexBuffer) - 1)) {
       hexBuffer[bufferIndex++] = character;
       hexBuffer[bufferIndex] = '\0';  // Null terminate the buffer
     }
@@ -777,7 +551,7 @@ void capture() {
 #ifdef DEBUG
     Serial.println("non hex character");
 #endif
-    Serial.print('?');
+    sendToMBC('?');
     // Reset the buffer, disable capture mode
     disableCaptureMode();
     return;
@@ -792,7 +566,7 @@ void capture() {
     Serial.println(")");
 #endif
     int hex_value = hex_to_int(hexBuffer);  // Convert hex string to int
-    w(hex_value);                           // Output the integer value
+    sendToMBC(hex_value);                   // Output the integer value
     // Reset the buffer, disable capture mode
     disableCaptureMode();
   }
